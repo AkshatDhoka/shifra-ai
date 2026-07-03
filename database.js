@@ -1,111 +1,157 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+require('dotenv').config();
+const { Pool } = require('pg');
 
-// Resolve the path for the database file
-const dbPath = path.resolve(__dirname, 'database.db');
-
-// Connect to SQLite Database
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Database connection error:', err.message);
-  } else {
-    console.log('Connected to SQLite database at:', dbPath);
-  }
+// Create PostgreSQL connection pool
+const pool = new Pool({
+  host: process.env.PGHOST || 'localhost',
+  user: process.env.PGUSER || 'postgres',
+  password: process.env.PGPASSWORD || '',
+  database: process.env.PGDATABASE || 'shifra_ai',
+  port: parseInt(process.env.PGPORT || '5432', 10),
 });
 
 /**
- * Executes a query that doesn't return rows (e.g. INSERT, UPDATE, DELETE).
- * @param {string} sql - SQL query string
- * @param {Array} params - Query parameters
- * @returns {Promise<{lastId: number, changes: number}>}
+ * Execute a generic SQL query.
+ * @param {string} text - The SQL query text with $1, $2 placeholders
+ * @param {Array} params - Query arguments
+ * @returns {Promise<import('pg').QueryResult>}
  */
-function dbRun(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      if (err) {
-        reject(err);
-      } else {
-        // 'this' refers to the statement object containing changes and lastID
-        resolve({ lastId: this.lastID, changes: this.changes });
-      }
-    });
-  });
+async function dbQuery(text, params = []) {
+  return await pool.query(text, params);
 }
 
 /**
- * Fetches a single row from the query.
- * @param {string} sql - SQL query string
- * @param {Array} params - Query parameters
+ * Fetch a single row.
+ * @param {string} text - SQL query
+ * @param {Array} params - Query arguments
  * @returns {Promise<Object|undefined>}
  */
-function dbGet(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(row);
-      }
-    });
-  });
+async function dbGet(text, params = []) {
+  const res = await dbQuery(text, params);
+  return res.rows[0];
 }
 
 /**
- * Fetches all rows matching the query.
- * @param {string} sql - SQL query string
- * @param {Array} params - Query parameters
+ * Fetch all matching rows.
+ * @param {string} text - SQL query
+ * @param {Array} params - Query arguments
  * @returns {Promise<Array<Object>>}
  */
-function dbAll(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(rows);
-      }
-    });
-  });
+async function dbAll(text, params = []) {
+  const res = await dbQuery(text, params);
+  return res.rows;
 }
 
 /**
- * Initializes the database schemas for Shifra AI.
+ * Perform data modification queries (INSERT, UPDATE, DELETE).
+ * @param {string} text - SQL query
+ * @param {Array} params - Query arguments
+ * @returns {Promise<{rowCount: number, rows: Array<any>}>}
+ */
+async function dbRun(text, params = []) {
+  const res = await dbQuery(text, params);
+  return {
+    rowCount: res.rowCount,
+    rows: res.rows
+  };
+}
+
+/**
+ * Saves a single chat message linked to a specific user.
+ * @param {number} userId - ID of the sender user
+ * @param {string} role - 'user' or 'assistant'
+ * @param {string} message - Content of the message
+ * @returns {Promise<Object>} The saved message record containing id and timestamp
+ */
+async function saveChatMessage(userId, role, message) {
+  const result = await dbRun(
+    'INSERT INTO chats (user_id, role, message) VALUES ($1, $2, $3) RETURNING id, timestamp',
+    [userId, role, message]
+  );
+  return result.rows[0];
+}
+
+/**
+ * Fetches all chronological chat messages for a user.
+ * @param {number} userId - ID of the user
+ * @returns {Promise<Array<Object>>} Messages list
+ */
+async function getUserChatHistory(userId) {
+  return await dbAll(
+    'SELECT role, message, timestamp FROM chats WHERE user_id = $1 ORDER BY timestamp ASC',
+    [userId]
+  );
+}
+
+/**
+ * Deletes all chat history rows for a user.
+ * @param {number} userId - ID of the user
+ * @returns {Promise<{rowCount: number}>} Delete result details
+ */
+async function clearUserChatHistory(userId) {
+  return await dbRun(
+    'DELETE FROM chats WHERE user_id = $1',
+    [userId]
+  );
+}
+
+/**
+ * Initializes tables in PostgreSQL.
+ * Drops existing tables to apply the new schema configuration with email.
  */
 async function initDatabase() {
   try {
-    // 1. Create Users Table
-    await dbRun(`
+    // Attempt database connection
+    const client = await pool.connect();
+    console.log('Successfully connected to PostgreSQL.');
+    client.release();
+
+    // 1. Create Users Table (Added email field)
+    await dbQuery(`
       CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    // 2. Create Chats Table (ready for Phase 2)
-    await dbRun(`
+    // 2. Create Chats Table (Ready for Phase 2)
+    await dbQuery(`
       CREATE TABLE IF NOT EXISTS chats (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        role TEXT CHECK(role IN ('user', 'assistant')) NOT NULL,
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(20) CHECK (role IN ('user', 'assistant')) NOT NULL,
         message TEXT NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
-    console.log('SQLite database tables verified/initialized.');
+    console.log('PostgreSQL tables verified/initialized.');
   } catch (error) {
-    console.error('Failed to initialize database tables:', error);
-    process.exit(1);
+    console.error('\n======================================================');
+    console.error('❌ POSTGRESQL CONNECTION ERROR');
+    console.error('======================================================');
+    console.error('Details:', error.message);
+    console.error('\nTROUBLESHOOTING STEPS:');
+    console.error('1. Make sure your PostgreSQL server is running.');
+    console.error('2. Create the target database if it doesn\'t exist. Connect to PostgreSQL and run:');
+    console.error('   CREATE DATABASE shifra_ai;');
+    console.error('3. Verify that your host, port, user, and password in .env are correct.');
+    console.error('======================================================\n');
+    throw error;
   }
 }
 
 module.exports = {
-  db,
-  dbRun,
+  pool,
+  dbQuery,
   dbGet,
   dbAll,
+  dbRun,
+  saveChatMessage,
+  getUserChatHistory,
+  clearUserChatHistory,
   initDatabase
 };
