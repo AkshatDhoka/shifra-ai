@@ -57,67 +57,105 @@ async function dbRun(text, params = []) {
 }
 
 /**
- * Saves a single chat message linked to a specific user.
+ * Saves a single chat message linked to a specific user and session.
  * @param {number} userId - ID of the sender user
  * @param {string} role - 'user' or 'assistant'
  * @param {string} message - Content of the message
+ * @param {string} sessionId - ID of the conversation session
  * @returns {Promise<Object>} The saved message record containing id and timestamp
  */
-async function saveChatMessage(userId, role, message) {
+async function saveChatMessage(userId, role, message, sessionId = 'default') {
   const result = await dbRun(
-    'INSERT INTO chats (user_id, role, message) VALUES ($1, $2, $3) RETURNING id, timestamp',
-    [userId, role, message]
+    'INSERT INTO chats (user_id, role, message, session_id) VALUES ($1, $2, $3, $4) RETURNING id, timestamp',
+    [userId, role, message, sessionId]
   );
   return result.rows[0];
 }
 
 /**
- * Fetches all chronological chat messages for a user.
+ * Fetches all chronological chat messages for a user session.
  * @param {number} userId - ID of the user
+ * @param {string} sessionId - ID of the session
  * @returns {Promise<Array<Object>>} Messages list
  */
-async function getUserChatHistory(userId) {
+async function getUserChatHistory(userId, sessionId = 'default') {
   return await dbAll(
-    'SELECT role, message, timestamp FROM chats WHERE user_id = $1 ORDER BY timestamp ASC',
-    [userId]
+    'SELECT role, message, timestamp FROM chats WHERE user_id = $1 AND session_id = $2 ORDER BY timestamp ASC',
+    [userId, sessionId]
   );
 }
 
 /**
- * Deletes all chat history rows for a user.
+ * Fetches all unique chat sessions (headers) for a user.
+ * Uses the first user message in each session as the title.
  * @param {number} userId - ID of the user
+ * @returns {Promise<Array<Object>>} Unique sessions details
+ */
+async function getUserChatSessions(userId) {
+  return await dbAll(`
+    SELECT DISTINCT ON (session_id) session_id, message, timestamp
+    FROM chats
+    WHERE user_id = $1 AND role = 'user'
+    ORDER BY session_id, timestamp ASC
+  `, [userId]);
+}
+
+/**
+ * Deletes all chat history rows for a specific user session.
+ * @param {number} userId - ID of the user
+ * @param {string} sessionId - ID of the session to clear
  * @returns {Promise<{rowCount: number}>} Delete result details
  */
-async function clearUserChatHistory(userId) {
+async function clearUserChatHistory(userId, sessionId = 'default') {
   return await dbRun(
-    'DELETE FROM chats WHERE user_id = $1',
-    [userId]
+    'DELETE FROM chats WHERE user_id = $1 AND session_id = $2',
+    [userId, sessionId]
   );
+}
+
+/**
+ * Updates a user's subscription active parameters.
+ * @param {number} userId - ID of the user
+ * @param {string} tier - 'free', 'pro', or 'premium'
+ * @param {string} duration - 'none', 'monthly', or 'yearly'
+ * @returns {Promise<Object>} The updated subscription details
+ */
+async function updateUserSubscription(userId, tier, duration) {
+  const expiryDays = duration === 'yearly' ? 365 : 30;
+  const result = await dbRun(
+    `UPDATE users 
+     SET plan_tier = $1, plan_duration = $2, plan_expiry = NOW() + ($3 || ' DAY')::INTERVAL
+     WHERE id = $4
+     RETURNING plan_tier, plan_duration, plan_expiry`,
+    [tier, duration, expiryDays.toString(), userId]
+  );
+  return result.rows[0];
 }
 
 /**
  * Initializes tables in PostgreSQL.
- * Drops existing tables to apply the new schema configuration with email.
  */
 async function initDatabase() {
   try {
-    // Attempt database connection
     const client = await pool.connect();
     console.log('Successfully connected to PostgreSQL.');
     client.release();
 
-    // 1. Create Users Table (Added email field)
+    // 1. Create Users Table (Added plan settings support)
     await dbQuery(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(50) UNIQUE NOT NULL,
         email VARCHAR(100) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        plan_tier VARCHAR(20) DEFAULT 'free',
+        plan_duration VARCHAR(20) DEFAULT 'none',
+        plan_expiry TIMESTAMP DEFAULT NULL
       )
     `);
 
-    // 2. Create Chats Table (Ready for Phase 2)
+    // 2. Create Chats Table
     await dbQuery(`
       CREATE TABLE IF NOT EXISTS chats (
         id SERIAL PRIMARY KEY,
@@ -128,18 +166,25 @@ async function initDatabase() {
       )
     `);
 
+    // Ensure session_id column exists
+    await dbQuery(`
+      ALTER TABLE chats ADD COLUMN IF NOT EXISTS session_id VARCHAR(50) DEFAULT 'default'
+    `);
+
+    // Ensure new subscription columns exist on older user tables if they already exist
+    await dbQuery(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_tier VARCHAR(20) DEFAULT 'free'
+    `);
+    await dbQuery(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_duration VARCHAR(20) DEFAULT 'none'
+    `);
+    await dbQuery(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_expiry TIMESTAMP DEFAULT NULL
+    `);
+
     console.log('PostgreSQL tables verified/initialized.');
   } catch (error) {
-    console.error('\n======================================================');
-    console.error('❌ POSTGRESQL CONNECTION ERROR');
-    console.error('======================================================');
-    console.error('Details:', error.message);
-    console.error('\nTROUBLESHOOTING STEPS:');
-    console.error('1. Make sure your PostgreSQL server is running.');
-    console.error('2. Create the target database if it doesn\'t exist. Connect to PostgreSQL and run:');
-    console.error('   CREATE DATABASE shifra_ai;');
-    console.error('3. Verify that your host, port, user, and password in .env are correct.');
-    console.error('======================================================\n');
+    console.error('PostgreSQL Connection error:', error.message);
     throw error;
   }
 }
@@ -152,6 +197,8 @@ module.exports = {
   dbRun,
   saveChatMessage,
   getUserChatHistory,
+  getUserChatSessions,
   clearUserChatHistory,
+  updateUserSubscription,
   initDatabase
 };

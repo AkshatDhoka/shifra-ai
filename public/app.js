@@ -1,8 +1,10 @@
 /**
- * SHIFRA AI - CLIENT CONTROLLER (PHASES 1 & 2)
+ * SHIFRA AI - CLIENT CONTROLLER (PHASES 1, 2, & 3)
  * Handles transitions, 3D flip card, real-time validations, email checks,
  * welcome overlay transition animations, markdown formatting, speech recognition,
- * speech synthesis, and secure REST communication with the backend.
+ * speech synthesis (female voice optimization), dynamic multi-chat sessions,
+ * billing plans, interactive checkout, UPI countdown, card mockup, theme selectors,
+ * chat exports, server statistics dashboard, and glitch resets.
  */
 document.addEventListener('DOMContentLoaded', () => {
   // --- View Containers & Navigation ---
@@ -22,10 +24,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Workspace Elements ---
   const sidebarUsername = document.getElementById('sidebar-username');
+  const userPlanBadge = document.getElementById('user-plan-badge');
+  const userPlanExpiry = document.getElementById('user-plan-expiry');
+  
   const chatFeed = document.getElementById('chat-feed');
   const chatPrompt = document.getElementById('chat-prompt');
   const btnSendMessage = document.getElementById('btn-send-message');
   const btnClearHistory = document.getElementById('btn-clear-history');
+  const btnExportChat = document.getElementById('btn-export-chat');
+  
+  const btnNewChat = document.getElementById('btn-new-chat');
+  const sidebarSessionsList = document.getElementById('sidebar-sessions-list');
+  const btnUpgradePlan = document.getElementById('btn-upgrade-plan');
   
   // Voice Controls
   const voiceBubble = document.getElementById('voice-bubble');
@@ -33,11 +43,63 @@ document.addEventListener('DOMContentLoaded', () => {
   const speechStatusBar = document.getElementById('speech-status-bar');
   const speechStatusText = document.getElementById('speech-status-text');
 
+  // --- Phase 3 Billing UI Elements ---
+  const billingModal = document.getElementById('billing-modal');
+  const btnCloseBilling = document.getElementById('btn-close-billing');
+  
+  const plansScreen = document.getElementById('billing-plans-screen');
+  const checkoutScreen = document.getElementById('billing-checkout-screen');
+  const processingScreen = document.getElementById('billing-processing-screen');
+  const successScreen = document.getElementById('billing-success-screen');
+  
+  const pricingCycleCheckbox = document.getElementById('pricing-cycle-checkbox');
+  const priceProValue = document.getElementById('price-pro-value');
+  const priceProPeriod = document.getElementById('price-pro-period');
+  const pricePremiumValue = document.getElementById('price-premium-value');
+  const pricePremiumPeriod = document.getElementById('price-premium-period');
+  
+  const btnSelectPro = document.getElementById('btn-select-pro');
+  const btnSelectPremium = document.getElementById('btn-select-premium');
+  
+  const btnBackToPlans = document.getElementById('btn-back-to-plans');
+  const summaryPlanName = document.getElementById('summary-plan-name');
+  const summaryPlanPeriod = document.getElementById('summary-plan-period');
+  const summaryPlanPrice = document.getElementById('summary-plan-price');
+  
+  const tabBtnCard = document.getElementById('tab-btn-card');
+  const tabBtnUpi = document.getElementById('tab-btn-upi');
+  const cardTabContent = document.getElementById('payment-card-content');
+  const upiTabContent = document.getElementById('payment-upi-content');
+  
+  // Interactive Card Fields
+  const cardNumberInput = document.getElementById('card-number');
+  const cardNameInput = document.getElementById('card-name');
+  const cardExpiryInput = document.getElementById('card-expiry');
+  const cardCvvInput = document.getElementById('card-cvv');
+  
+  const mockCardNumber = document.getElementById('mock-card-number');
+  const mockCardName = document.getElementById('mock-card-name');
+  const mockCardExpiry = document.getElementById('mock-card-expiry');
+  
+  const checkoutCardForm = document.getElementById('checkout-card-form');
+  const btnVerifyUpiPayment = document.getElementById('btn-verify-upi-payment');
+  const upiCountdownTimer = document.getElementById('upi-countdown-timer');
+  const btnLaunchPremium = document.getElementById('btn-launch-premium');
+
+  // --- Session Management State ---
+  let activeSessionId = null;  // Current conversation ID
+  
   // --- Voice / Speech Variables ---
-  let isListeningMode = false; // Controls the hands-free floating bubble
-  let isDictating = false;     // Controls the inline prompt dictation
-  let recognition = null;      // Web Speech API Recognition instance
-  let activeSpeechUtterance = null; // Currently speaking utterance
+  let isListeningMode = false; 
+  let isDictating = false;     
+  let recognition = null;      
+  let activeSpeechUtterance = null; 
+
+  // --- Billing State ---
+  let selectedTier = 'pro';      
+  let selectedCycle = 'monthly';  
+  let selectedPrice = '$9.00';
+  let upiTimer = null;
 
   // Initialize Speech Recognition if supported
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -49,8 +111,63 @@ document.addEventListener('DOMContentLoaded', () => {
     recognition.maxAlternatives = 1;
   }
 
+  // --- Theme Syncing ---
+  const themeDots = document.querySelectorAll('.theme-dot');
+  const savedTheme = localStorage.getItem('shifra_theme') || 'purple';
+  applyThemeAccent(savedTheme);
+
+  // Bind clicks to theme selector dots
+  themeDots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      const selectedAccent = dot.getAttribute('data-theme');
+      applyThemeAccent(selectedAccent);
+      showToast(`Interface accent updated to ${selectedAccent.toUpperCase()}.`, 'info');
+    });
+  });
+
+  function applyThemeAccent(themeName) {
+    // Reset body theme classes
+    document.body.classList.remove('theme-purple', 'theme-green', 'theme-orange');
+    
+    // Add selected accent class
+    if (themeName !== 'purple') {
+      document.body.classList.add(`theme-${themeName}`);
+    }
+
+    // Set dot active state classes
+    themeDots.forEach(dot => {
+      if (dot.getAttribute('data-theme') === themeName) {
+        dot.classList.add('active');
+      } else {
+        dot.classList.remove('active');
+      }
+    });
+
+    localStorage.setItem('shifra_theme', themeName);
+  }
+
+  // --- Real-time Stats dashboard updates ---
+  setInterval(() => {
+    const statsLatency = document.getElementById('stats-latency');
+    if (statsLatency) {
+      // Simulate real-world network fluctuations
+      const randLatency = Math.floor(Math.random() * (165 - 110 + 1) + 110);
+      statsLatency.textContent = `${randLatency}ms`;
+    }
+  }, 4000);
+
+  let currentUptime = 99.982;
+  setInterval(() => {
+    const statsUptime = document.getElementById('stats-uptime');
+    if (statsUptime) {
+      currentUptime += (Math.random() - 0.5) * 0.001;
+      if (currentUptime > 99.999) currentUptime = 99.995;
+      if (currentUptime < 99.95) currentUptime = 99.982;
+      statsUptime.textContent = `${currentUptime.toFixed(3)}%`;
+    }
+  }, 5000);
+
   // --- Session Loader ---
-  // Checks token and transitions user to the appropriate screen
   const token = localStorage.getItem('shifra_token');
   const savedUser = localStorage.getItem('shifra_user');
   if (token && savedUser) {
@@ -70,17 +187,13 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Handle Logout
   btnLogout.addEventListener('click', () => {
-    // Stop speaking if active
     stopSpeaking();
-    
-    // Clear credentials
     localStorage.removeItem('shifra_token');
     localStorage.removeItem('shifra_user');
-    
-    // Reset workspace DOM state
     chatFeed.innerHTML = '';
+    sidebarSessionsList.innerHTML = '';
+    activeSessionId = null;
     
-    // Fade out and return to landing
     workspaceView.classList.remove('active');
     setTimeout(() => {
       welcomeView.classList.add('active');
@@ -479,11 +592,12 @@ document.addEventListener('DOMContentLoaded', () => {
     chatPrompt.value = '';
     adjustTextareaHeight();
     
-    // Focus prompt automatically
+    activeSessionId = 'session_' + Date.now();
+    
     chatPrompt.focus();
 
-    // 1. Fetch saved messages from PostgreSQL
-    await fetchChatHistory();
+    await loadSessionsList();
+    await syncUserPlanDetails();
   }
 
   // --- Textarea Input Auto-Growing helper ---
@@ -511,27 +625,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const promptText = chatPrompt.value.trim();
     if (!promptText) return;
 
-    // Stop speaking if active before starting a new chat
     stopSpeaking();
 
-    // 1. Render User message in feed
+    if (!activeSessionId) {
+      activeSessionId = 'session_' + Date.now();
+    }
+
     appendMessageToFeed('user', promptText);
     
-    // Clear input box
     chatPrompt.value = '';
     chatPrompt.style.height = 'auto';
 
-    // Remove suggestions cards template wrapper if present
     const welcomeWrapper = document.getElementById('chat-welcome-cards');
     if (welcomeWrapper) {
       welcomeWrapper.remove();
     }
 
-    // 2. Render typing loader indicator
     const loaderId = appendTypingIndicator();
     scrollToBottom();
 
-    // 3. Dispatch POST API call to server
     try {
       const activeToken = localStorage.getItem('shifra_token');
       const response = await fetch('/api/chat', {
@@ -540,22 +652,23 @@ document.addEventListener('DOMContentLoaded', () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${activeToken}`
         },
-        body: JSON.stringify({ prompt: promptText })
+        body: JSON.stringify({ 
+          prompt: promptText,
+          sessionId: activeSessionId
+        })
       });
 
       const data = await response.json();
       
-      // Remove typing dots
       removeTypingIndicator(loaderId);
 
       if (!response.ok) {
         appendMessageToFeed('assistant', `⚠️ **Error**: ${data.error || 'Could not fetch reply.'}`);
         showToast(data.error || 'Server error, check connections.', 'error');
       } else {
-        // Render assistant markdown response
         appendMessageToFeed('assistant', data.response);
+        await loadSessionsList();
         
-        // If Voice mode is active, read the text reply aloud
         if (isListeningMode) {
           speakText(data.response);
         }
@@ -583,10 +696,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (role === 'user') {
       bubble.textContent = text;
     } else {
-      // Parse markdown to HTML for Gemini responses
       bubble.innerHTML = parseMarkdownToHtml(text);
-      
-      // Bind copy listeners to any copy-code buttons
       bindCopyCodeButtons(bubble);
     }
     
@@ -637,59 +747,164 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // --- Fetch past history logs from server ---
-  async function fetchChatHistory() {
+  // --- Fetch past history logs for a specific session ---
+  async function fetchSessionChatHistory(sessionId) {
     try {
       const activeToken = localStorage.getItem('shifra_token');
-      const response = await fetch('/api/chat/history', {
+      const response = await fetch(`/api/chat/history/${sessionId}`, {
         headers: { 'Authorization': `Bearer ${activeToken}` }
       });
       const data = await response.json();
 
-      if (response.ok && data.history && data.history.length > 0) {
-        // Clear empty state prompt wrapper
-        const welcomeWrapper = document.getElementById('chat-welcome-cards');
-        if (welcomeWrapper) welcomeWrapper.remove();
+      chatFeed.innerHTML = ''; 
 
-        // Render each past message
+      if (response.ok && data.history && data.history.length > 0) {
         data.history.forEach(msg => {
           appendMessageToFeed(msg.role, msg.message);
         });
         scrollToBottom();
+      } else {
+        renderWelcomeCards();
       }
     } catch (err) {
-      console.error('Failed to load history:', err);
-      showToast('Could not load chat logs from database.', 'error');
+      console.error('Failed to load session history:', err);
+      showToast('Could not load conversation logs.', 'error');
     }
   }
 
-  // --- Clear History Click Handler ---
+  // --- Load and Render Sessions List in Sidebar ---
+  async function loadSessionsList() {
+    try {
+      const activeToken = localStorage.getItem('shifra_token');
+      const response = await fetch('/api/chat/sessions', {
+        headers: { 'Authorization': `Bearer ${activeToken}` }
+      });
+      const data = await response.json();
+
+      if (response.ok && data.sessions) {
+        sidebarSessionsList.innerHTML = '';
+        
+        if (data.sessions.length === 0) {
+          sidebarSessionsList.innerHTML = '<div style="font-size:0.78rem; color:var(--text-muted); text-align:center; padding: 15px 0;">No active logs</div>';
+          return;
+        }
+
+        data.sessions.forEach(session => {
+          const sessionItem = document.createElement('div');
+          sessionItem.className = 'session-item';
+          if (session.session_id === activeSessionId) {
+            sessionItem.classList.add('active');
+          }
+          sessionItem.setAttribute('data-id', session.session_id);
+          
+          let title = session.message || 'New Chat';
+          if (title.length > 25) {
+            title = title.substring(0, 25) + '...';
+          }
+          sessionItem.textContent = title;
+          
+          sessionItem.addEventListener('click', () => {
+            switchSession(session.session_id);
+          });
+
+          sidebarSessionsList.appendChild(sessionItem);
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching sessions:', err);
+    }
+  }
+
+  function switchSession(sessionId) {
+    if (activeSessionId === sessionId) return;
+    
+    stopSpeaking();
+    
+    // Apply digital glitch clearing skew animations on switch
+    chatFeed.classList.add('glitch-clearing');
+    
+    setTimeout(() => {
+      activeSessionId = sessionId;
+      
+      const items = sidebarSessionsList.querySelectorAll('.session-item');
+      items.forEach(item => {
+        if (item.getAttribute('data-id') === sessionId) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
+
+      fetchSessionChatHistory(sessionId);
+      chatFeed.classList.remove('glitch-clearing');
+    }, 450);
+  }
+
+  // --- New Chat Button Trigger ---
+  btnNewChat.addEventListener('click', () => {
+    stopSpeaking();
+    
+    // Trigger clear glitch
+    chatFeed.classList.add('glitch-clearing');
+    
+    setTimeout(() => {
+      activeSessionId = 'session_' + Date.now();
+      
+      chatFeed.innerHTML = '';
+      renderWelcomeCards();
+      chatPrompt.value = '';
+      chatPrompt.style.height = 'auto';
+      chatPrompt.focus();
+
+      const items = sidebarSessionsList.querySelectorAll('.session-item');
+      items.forEach(item => item.classList.remove('active'));
+
+      chatFeed.classList.remove('glitch-clearing');
+      showToast('New secure session initialized.', 'info');
+    }, 450);
+  });
+
+  // --- Delete Active Chat Handler ---
   btnClearHistory.addEventListener('click', async () => {
-    if (!confirm('Are you sure you want to clear your entire chat history? This cannot be undone.')) {
+    if (!activeSessionId) {
+      showToast('No active session selected.', 'warning');
       return;
     }
 
-    try {
-      const activeToken = localStorage.getItem('shifra_token');
-      const response = await fetch('/api/chat/history', {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${activeToken}` }
-      });
-
-      if (response.ok) {
-        stopSpeaking();
-        chatFeed.innerHTML = '';
-        showToast('Chat history cleared.', 'success');
-        
-        // Re-render empty welcome cards
-        renderWelcomeCards();
-      } else {
-        showToast('Could not clear chat history.', 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Clear history query failed.', 'error');
+    if (!confirm('Are you sure you want to delete the active conversation? This cannot be undone.')) {
+      return;
     }
+
+    // Trigger clear glitch animation
+    chatFeed.classList.add('glitch-clearing');
+
+    setTimeout(async () => {
+      try {
+        const activeToken = localStorage.getItem('shifra_token');
+        const response = await fetch(`/api/chat/history/${activeSessionId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${activeToken}` }
+        });
+
+        chatFeed.classList.remove('glitch-clearing');
+
+        if (response.ok) {
+          stopSpeaking();
+          chatFeed.innerHTML = '';
+          showToast('Active conversation deleted.', 'success');
+          
+          activeSessionId = 'session_' + Date.now();
+          await loadSessionsList();
+          renderWelcomeCards();
+        } else {
+          showToast('Could not delete conversation.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        chatFeed.classList.remove('glitch-clearing');
+        showToast('Delete query failed.', 'error');
+      }
+    }, 750);
   });
 
   function renderWelcomeCards() {
@@ -725,11 +940,373 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
+  // EXPORT CONVERSATION TO MARKDOWN (.MD)
+  // ==========================================
+  btnExportChat.addEventListener('click', () => {
+    const rows = chatFeed.querySelectorAll('.message-row');
+    if (rows.length === 0 || (rows.length === 1 && rows[0].id === 'chat-welcome-cards')) {
+      showToast('No active conversation logs to export.', 'warning');
+      return;
+    }
+
+    let markdownText = `# Shifra AI Coding Companion - Chat Session Logs\n`;
+    markdownText += `Generated on: ${new Date().toLocaleString()}\n`;
+    markdownText += `Session ID: ${activeSessionId}\n\n`;
+    markdownText += `---\n\n`;
+
+    rows.forEach(row => {
+      if (row.id === 'chat-welcome-cards') return;
+
+      const bubble = row.querySelector('.message-bubble');
+      if (!bubble) return;
+
+      const isUser = row.classList.contains('user-row');
+      const sender = isUser ? 'USER' : 'SHIFRA AI';
+      
+      let content = '';
+      if (isUser) {
+        content = bubble.textContent;
+      } else {
+        // Pull clean formatted text content out of parsed HTML blocks
+        content = bubble.innerText;
+        // Clean out 'Copy' button labels inside blocks
+        content = content.replace(/\bCopy\b/g, '');
+      }
+
+      markdownText += `### **[${sender}]**\n${content.trim()}\n\n---\n\n`;
+    });
+
+    const blob = new Blob([markdownText], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `shifra_chat_${activeSessionId}.md`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast('Conversation exported successfully as Markdown.', 'success');
+  });
+
+  // ==========================================
+  // PHASE 3 - BILLING & DYNAMIC GATEWAY CONTROLLER
+  // ==========================================
+
+  async function syncUserPlanDetails() {
+    try {
+      const activeToken = localStorage.getItem('shifra_token');
+      if (!activeToken) return;
+
+      const response = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${activeToken}` }
+      });
+      const data = await response.json();
+
+      if (response.ok && data.user) {
+        const tier = data.user.plan_tier || 'free';
+        const expiry = data.user.plan_expiry;
+
+        userPlanBadge.className = 'plan-badge-mini';
+        
+        if (tier === 'pro') {
+          userPlanBadge.textContent = 'PRO';
+          userPlanBadge.classList.add('badge-pro');
+        } else if (tier === 'premium') {
+          userPlanBadge.textContent = 'PREMIUM';
+          userPlanBadge.classList.add('badge-premium');
+        } else {
+          userPlanBadge.textContent = 'FREE';
+          userPlanBadge.classList.add('badge-free');
+        }
+
+        if (tier === 'free' || !expiry) {
+          userPlanExpiry.textContent = 'Active Session';
+        } else {
+          const date = new Date(expiry);
+          const formattedDate = date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+          userPlanExpiry.textContent = `Expires: ${formattedDate}`;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync plan parameters:', err);
+    }
+  }
+
+  btnUpgradePlan.addEventListener('click', () => {
+    stopSpeaking();
+    billingModal.classList.add('active');
+    showBillingScreen(plansScreen);
+  });
+
+  btnCloseBilling.addEventListener('click', () => {
+    closeBillingModalWindow();
+  });
+
+  function closeBillingModalWindow() {
+    billingModal.classList.remove('active');
+    clearInterval(upiTimer);
+  }
+
+  function showBillingScreen(screenEl) {
+    const screens = [plansScreen, checkoutScreen, processingScreen, successScreen];
+    screens.forEach(s => s.classList.remove('active'));
+    screenEl.classList.add('active');
+  }
+
+  pricingCycleCheckbox.addEventListener('change', () => {
+    const isYearly = pricingCycleCheckbox.checked;
+    selectedCycle = isYearly ? 'yearly' : 'monthly';
+
+    const monthlyLabels = document.querySelectorAll('.monthly-label');
+    const yearlyLabels = document.querySelectorAll('.yearly-label');
+
+    if (isYearly) {
+      monthlyLabels.forEach(l => l.classList.remove('active'));
+      yearlyLabels.forEach(l => l.classList.add('active'));
+
+      priceProValue.textContent = '79';
+      priceProPeriod.textContent = '/yr';
+      pricePremiumValue.textContent = '249';
+      pricePremiumPeriod.textContent = '/yr';
+    } else {
+      monthlyLabels.forEach(l => l.classList.add('active'));
+      yearlyLabels.forEach(l => l.classList.remove('active'));
+
+      priceProValue.textContent = '9';
+      priceProPeriod.textContent = '/mo';
+      pricePremiumValue.textContent = '29';
+      pricePremiumPeriod.textContent = '/mo';
+    }
+  });
+
+  btnSelectPro.addEventListener('click', () => {
+    selectedTier = 'pro';
+    selectedPrice = selectedCycle === 'yearly' ? '$79.00' : '$9.00';
+    openCheckoutScreen('Shifra Go Pro', selectedCycle === 'yearly' ? 'Yearly billing' : 'Monthly billing', selectedPrice);
+  });
+
+  btnSelectPremium.addEventListener('click', () => {
+    selectedTier = 'premium';
+    selectedPrice = selectedCycle === 'yearly' ? '$249.00' : '$29.00';
+    openCheckoutScreen('Shifra Premium Elite', selectedCycle === 'yearly' ? 'Yearly billing' : 'Monthly billing', selectedPrice);
+  });
+
+  function openCheckoutScreen(planName, planPeriod, planPrice) {
+    summaryPlanName.textContent = planName;
+    summaryPlanPeriod.textContent = planPeriod;
+    summaryPlanPrice.textContent = planPrice;
+
+    checkoutCardForm.reset();
+    mockCardNumber.textContent = '•••• •••• •••• ••••';
+    mockCardName.textContent = 'YOUR NAME';
+    mockCardExpiry.textContent = 'MM/YY';
+
+    showBillingScreen(checkoutScreen);
+    activatePaymentTab('card'); 
+  }
+
+  btnBackToPlans.addEventListener('click', () => {
+    clearInterval(upiTimer);
+    showBillingScreen(plansScreen);
+  });
+
+  tabBtnCard.addEventListener('click', () => activatePaymentTab('card'));
+  tabBtnUpi.addEventListener('click', () => activatePaymentTab('upi'));
+
+  function activatePaymentTab(tabName) {
+    clearInterval(upiTimer);
+
+    if (tabName === 'card') {
+      tabBtnCard.classList.add('active');
+      tabBtnUpi.classList.remove('active');
+      cardTabContent.classList.add('active');
+      upiTabContent.classList.remove('active');
+    } else {
+      tabBtnCard.classList.remove('active');
+      tabBtnUpi.classList.add('active');
+      cardTabContent.classList.remove('active');
+      upiTabContent.classList.add('active');
+      startUpiCountdown();
+    }
+  }
+
+  cardNumberInput.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    let formatted = '';
+    for (let i = 0; i < value.length; i++) {
+      if (i > 0 && i % 4 === 0) {
+        formatted += ' ';
+      }
+      formatted += value[i];
+    }
+    e.target.value = formatted;
+    mockCardNumber.textContent = formatted || '•••• •••• •••• ••••';
+  });
+
+  cardNameInput.addEventListener('input', (e) => {
+    mockCardName.textContent = e.target.value.toUpperCase() || 'YOUR NAME';
+  });
+
+  cardExpiryInput.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/[^0-9]/g, '');
+    if (value.length > 2) {
+      value = value.substring(0, 2) + '/' + value.substring(2, 4);
+    }
+    e.target.value = value;
+    mockCardExpiry.textContent = value || 'MM/YY';
+  });
+
+  function startUpiCountdown() {
+    let totalSeconds = 300; 
+    
+    function tick() {
+      let minutes = Math.floor(totalSeconds / 60);
+      let seconds = totalSeconds % 60;
+      
+      let formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
+      let formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
+      
+      upiCountdownTimer.textContent = `Awaiting payment verification: ${formattedMinutes}:${formattedSeconds}`;
+      
+      if (totalSeconds <= 0) {
+        clearInterval(upiTimer);
+        upiCountdownTimer.textContent = 'Transaction QR Expired. Please reload checkout.';
+      }
+      totalSeconds--;
+    }
+    
+    clearInterval(upiTimer);
+    tick(); 
+    upiTimer = setInterval(tick, 1000);
+  }
+
+  checkoutCardForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    if (cardNumberInput.value.length < 19) {
+      showToast('Please enter a valid 16-digit card number.', 'error');
+      shakeElement(cardNumberInput.closest('.input-wrapper'));
+      return;
+    }
+    if (!cardNameInput.value.trim()) {
+      showToast('Cardholder name is required.', 'error');
+      shakeElement(cardNameInput.closest('.input-wrapper'));
+      return;
+    }
+    if (cardExpiryInput.value.length < 5) {
+      showToast('Please enter expiry details (MM/YY).', 'error');
+      shakeElement(cardExpiryInput.closest('.input-wrapper'));
+      return;
+    }
+    if (cardCvvInput.value.length < 3) {
+      showToast('Please enter a valid 3-digit CVV.', 'error');
+      shakeElement(cardCvvInput.closest('.input-wrapper'));
+      return;
+    }
+
+    executePaymentSimulation();
+  });
+
+  btnVerifyUpiPayment.addEventListener('click', () => {
+    clearInterval(upiTimer);
+    executePaymentSimulation();
+  });
+
+  function executePaymentSimulation() {
+    showBillingScreen(processingScreen);
+
+    const log1 = document.getElementById('billing-log-line-1');
+    const log2 = document.getElementById('billing-log-line-2');
+    const log3 = document.getElementById('billing-log-line-3');
+    const log4 = document.getElementById('billing-log-line-4');
+
+    const logs = [log1, log2, log3, log4];
+    logs.forEach(l => {
+      l.textContent = '';
+      l.className = 'terminal-log-line';
+    });
+
+    setTimeout(() => {
+      log1.textContent = '➔ [1/4] Establishing secure handshake with payment ledger...';
+      log1.classList.add('visible');
+    }, 500);
+
+    setTimeout(() => {
+      log2.textContent = '➔ [2/4] Verifying token signature and authorization...';
+      log2.classList.add('visible');
+    }, 1500);
+
+    setTimeout(() => {
+      log3.textContent = '➔ [3/4] Recording transaction in PostgreSQL database...';
+      log3.classList.add('visible');
+    }, 2500);
+
+    setTimeout(() => {
+      log4.textContent = '✔ [4/4] Activating subscription claims on user token...';
+      log4.classList.add('visible', 'log-success');
+    }, 3500);
+
+    setTimeout(async () => {
+      try {
+        const activeToken = localStorage.getItem('shifra_token');
+        const response = await fetch('/api/billing/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${activeToken}`
+          },
+          body: JSON.stringify({
+            planTier: selectedTier,
+            planDuration: selectedCycle
+          })
+        });
+
+        const data = await response.json();
+        
+        if (response.ok) {
+          showSuccessScreen();
+        } else {
+          showToast(data.error || 'Payment failed on server database update.', 'error');
+          showBillingScreen(checkoutScreen);
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Connection failed during payment verification.', 'error');
+        showBillingScreen(checkoutScreen);
+      }
+    }, 4600);
+  }
+
+  function showSuccessScreen() {
+    const successTitle = document.getElementById('billing-success-title');
+    const successSubtitle = document.getElementById('billing-success-subtitle');
+
+    const tierName = selectedTier === 'premium' ? 'Premium Elite' : 'Go Pro';
+    const periodName = selectedCycle === 'yearly' ? '1 Year' : '1 Month';
+
+    successTitle.textContent = 'UPGRADE SUCCESSFUL!';
+    successSubtitle.textContent = `Welcome to Shifra ${tierName} (${periodName} plan). Your secure AI workspace coding limits have been updated.`;
+
+    showBillingScreen(successScreen);
+    showToast('Plan upgraded successfully!', 'success');
+  }
+
+  btnLaunchPremium.addEventListener('click', async () => {
+    await syncUserPlanDetails();
+    btnNewChat.click();
+    closeBillingModalWindow();
+  });
+
+
+  // ==========================================
   // VOICE CONTROL ENGINE (SpeechRecognition & SpeechSynthesis)
   // ==========================================
 
-  // --- Voice Bubble Widget click handler ---
-  // Clicking the floating bubble toggles hands-free talk companion mode
   voiceBubble.addEventListener('click', () => {
     if (!recognition) {
       showToast('Speech recognition not supported in this browser. Please use Chrome.', 'warning');
@@ -737,23 +1314,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (isListeningMode) {
-      // Deactivate
       deactivateVoiceCompanion();
     } else {
-      // Activate
       activateVoiceCompanion();
     }
   });
 
-  // --- Dictation Button Click handler ---
-  // Dictates voice directly into text box without auto-sending
   btnMicDictate.addEventListener('click', () => {
     if (!recognition) {
       showToast('Speech recognition not supported in this browser.', 'warning');
       return;
     }
 
-    // Stop hands-free voice companion if active
     if (isListeningMode) {
       deactivateVoiceCompanion();
     }
@@ -771,15 +1343,13 @@ document.addEventListener('DOMContentLoaded', () => {
     speechStatusBar.classList.add('active');
     speechStatusText.textContent = 'Voice Companion Active: Listening...';
     
-    // Stop any active TTS audio speaking
     stopSpeaking();
-    
     startSpeechRecognition();
   }
 
   function deactivateVoiceCompanion() {
     isListeningMode = false;
-    voiceBubble.className = 'voice-bubble-widget'; // resets state classes
+    voiceBubble.className = 'voice-bubble-widget'; 
     speechStatusBar.classList.remove('active');
     
     stopSpeechRecognition();
@@ -808,11 +1378,10 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       recognition.start();
     } catch (e) {
-      // Recognition might already be running, catch and ignore
+      // Catch start attempts
     }
   }
 
-  // --- Web Speech API Recognition Bindings ---
   if (recognition) {
     recognition.onstart = () => {
       console.log('Voice engine active.');
@@ -823,13 +1392,11 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('Speech captured:', transcript);
 
       if (isListeningMode) {
-        // Hands-free mode: place transcript in prompt and submit it directly!
         chatPrompt.value = transcript;
         adjustTextareaHeight();
         speechStatusText.textContent = 'Speech Captured. Decoding...';
         handleSendMessageSubmit();
       } else if (isDictating) {
-        // Dictation mode: append text to current input area
         const currentText = chatPrompt.value;
         chatPrompt.value = currentText + (currentText ? ' ' : '') + transcript;
         adjustTextareaHeight();
@@ -841,7 +1408,6 @@ document.addEventListener('DOMContentLoaded', () => {
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
       if (event.error === 'no-speech') {
-        // If hands-free and silent, restart listening to keep loop active
         if (isListeningMode) {
           startSpeechRecognition();
         }
@@ -853,12 +1419,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     recognition.onend = () => {
       console.log('Voice engine inactive.');
-      // If hands-free is active and not currently speaking answers, restart loop
       if (isListeningMode && !voiceBubble.classList.contains('speaking')) {
         startSpeechRecognition();
       }
       
-      // Reset dictate state
       if (isDictating) {
         isDictating = false;
         btnMicDictate.classList.remove('recording-active');
@@ -866,28 +1430,34 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // --- Text to Speech (SpeechSynthesis) Helpers ---
   function speakText(rawText) {
     if (!window.speechSynthesis) return;
 
-    // Filter out code snippets, markdown characters, and URLs for clearer pronunciation
     const speakableText = cleanTextForSpeech(rawText);
-
-    // Stop previous audio
     stopSpeaking();
 
     activeSpeechUtterance = new SpeechSynthesisUtterance(speakableText);
     
-    // Choose active english voice if available
     const voices = window.speechSynthesis.getVoices();
-    const defaultVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('en'));
-    if (defaultVoice) {
-      activeSpeechUtterance.voice = defaultVoice;
+    const femaleVoiceKeywords = ['zira', 'samantha', 'karen', 'tessa', 'hazel', 'moira', 'susan', 'female', 'google us english'];
+    
+    let femaleVoice = voices.find(voice => {
+      const nameLower = voice.name.toLowerCase();
+      return voice.lang.startsWith('en') && femaleVoiceKeywords.some(keyword => nameLower.includes(keyword));
+    });
+    
+    if (!femaleVoice) {
+      femaleVoice = voices.find(v => v.lang.startsWith('en'));
     }
 
-    // Bind synthesis states to voice bubble equalizer animation triggers
+    if (femaleVoice) {
+      activeSpeechUtterance.voice = femaleVoice;
+    }
+    
+    activeSpeechUtterance.pitch = 1.15;
+    activeSpeechUtterance.rate = 1.0;
+
     activeSpeechUtterance.onstart = () => {
-      // Pause recognition loop while speaking to avoid echo loopback!
       if (recognition && isListeningMode) {
         recognition.stop();
       }
@@ -899,7 +1469,6 @@ document.addEventListener('DOMContentLoaded', () => {
       voiceBubble.classList.remove('speaking');
       activeSpeechUtterance = null;
 
-      // Re-enable speech recognition loop if hands-free is still active
       if (isListeningMode) {
         speechStatusText.textContent = 'Voice Companion: Listening...';
         startSpeechRecognition();
@@ -926,20 +1495,14 @@ document.addEventListener('DOMContentLoaded', () => {
     activeSpeechUtterance = null;
   }
 
-  /**
-   * Strips markdown tags and filters code snippets to make text read naturally.
-   */
   function cleanTextForSpeech(text) {
-    // 1. Remove entire code blocks
     let cleaned = text.replace(/```[\s\S]*?```/g, '[Code snippet omitted]');
-    
-    // 2. Remove inline code highlights, bold markers, asterisks, headers, etc.
     cleaned = cleaned.replace(/`([^`]+)`/g, '$1')
                      .replace(/\*\*([^*]+)\*\*/g, '$1')
                      .replace(/\*([^*]+)\*/g, '$1')
                      .replace(/#+\s+/g, '')
                      .replace(/[-*]\s+/g, '')
-                     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // links
+                     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); 
                      
     return cleaned.trim();
   }
@@ -949,21 +1512,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // CUSTOM MARKDOWN ENGINE (HTML PARSER)
   // ==========================================
 
-  /**
-   * Translates Markdown tags (headers, lists, bold text, code blocks) to semantic HTML.
-   * Includes copy-to-clipboard code blocks headers creation.
-   */
   function parseMarkdownToHtml(markdownText) {
     if (!markdownText) return '';
 
     let html = markdownText;
 
-    // Escape raw HTML characters to prevent XSS injection inside content text
     html = html.replace(/&/g, '&amp;')
                .replace(/</g, '&lt;')
                .replace(/>/g, '&gt;');
 
-    // 1. Parse code blocks: ```language \n code ```
     const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
     html = html.replace(codeBlockRegex, (match, language, code) => {
       const displayLang = language || 'code';
@@ -978,38 +1535,22 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     });
 
-    // 2. Parse inline code highlights: `code`
     html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-
-    // 3. Parse headers: ### Title, ## Title, # Title
     html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>')
                .replace(/^## (.*?)$/gm, '<h3>$1</h3>')
                .replace(/^# (.*?)$/gm, '<h2>$1</h2>');
-
-    // 4. Parse bold texts: **text**
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-
-    // 5. Parse unordered lists: * item, - item
-    // Match line breaks with bullet symbols and convert them
     html = html.replace(/^\s*[-*]\s+(.*?)$/gm, '<li>$1</li>');
-    // Wrap consecutive list tags inside <ul> (a simple check replacing surrounding list items)
     html = html.replace(/(<li>.*?<\/li>)/s, '<ul>$1</ul>');
-
-    // 6. Handle single carriage returns and paragraphs (skip code tags and list containers)
-    // Replace double newlines with spacing paragraph tags
     html = html.replace(/\n\n/g, '<br><br>');
 
     return html;
   }
 
-  /**
-   * Adds click listeners to copy-code buttons inside assistant answers.
-   */
   function bindCopyCodeButtons(bubbleElement) {
     const copyBtns = bubbleElement.querySelectorAll('.btn-copy-code');
     copyBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        // The code block <pre> is the next sibling element after the header
         const preElement = btn.closest('.code-header').nextElementSibling;
         if (preElement && preElement.tagName === 'PRE') {
           const codeText = preElement.querySelector('code').textContent;
@@ -1031,7 +1572,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  // Ensure voices are fetched (Chrome voice async fetch helper)
   if (window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
     window.speechSynthesis.onvoiceschanged = () => {
       console.log('Voices synchronized.');
