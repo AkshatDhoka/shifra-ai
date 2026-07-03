@@ -8,6 +8,7 @@ const pool = new Pool({
   password: process.env.PGPASSWORD || '',
   database: process.env.PGDATABASE || 'shifra_ai',
   port: parseInt(process.env.PGPORT || '5432', 10),
+  ssl: process.env.PGHOST && process.env.PGHOST !== 'localhost' ? { rejectUnauthorized: false } : false
 });
 
 /**
