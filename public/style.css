@@ -1,0 +1,691 @@
+/* ==========================================================================
+   SHIFRA AI - DESIGN SYSTEM & STYLES (PHASE 1)
+   ========================================================================== */
+
+/* --- CSS Variables & Design Tokens --- */
+:root {
+  /* Color Palette */
+  --bg-color: #06050a;
+  --bg-darker: #030205;
+  --card-bg: rgba(15, 11, 28, 0.45);
+  --card-border: rgba(255, 255, 255, 0.06);
+  --card-border-focus: rgba(138, 43, 226, 0.4);
+  
+  --text-primary: #f6f5fa;
+  --text-secondary: #a39eb9;
+  --text-muted: #645f7a;
+
+  --primary-gradient: linear-gradient(135deg, #8a2be2 0%, #4a00e0 50%, #00d2ff 100%);
+  --text-gradient: linear-gradient(135deg, #b37dff 0%, #00d2ff 100%);
+  
+  --color-purple: #8a2be2;
+  --color-blue: #4a00e0;
+  --color-cyan: #00d2ff;
+  
+  --color-success: #00e676;
+  --color-warning: #ffab00;
+  --color-error: #ff1744;
+  
+  /* Fonts */
+  --font-main: 'Outfit', sans-serif;
+  --font-code: 'Fira Code', monospace;
+  
+  /* Shadows & Glows */
+  --glow-primary: 0 0 30px rgba(138, 43, 226, 0.25);
+  --glow-cyan: 0 0 30px rgba(0, 210, 255, 0.25);
+  --card-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  
+  /* Transitions */
+  --transition-smooth: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --transition-fast: all 0.2s ease;
+}
+
+/* --- Base Resets & Layout --- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Ambient Animated Backgrounds --- */
+.bg-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: -2;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.bg-glow-1 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, var(--color-purple) 0%, transparent 70%);
+  top: -10%;
+  left: -10%;
+  animation: bgGlowMove1 20s infinite alternate ease-in-out;
+}
+
+.bg-glow-2 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, var(--color-cyan) 0%, transparent 70%);
+  bottom: -15%;
+  right: -10%;
+  animation: bgGlowMove2 25s infinite alternate ease-in-out;
+}
+
+.bg-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 30px 30px;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* --- Main Layout Container --- */
+.app-container {
+  width: 100%;
+  max-width: 1200px;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  position: relative;
+}
+
+.view-section {
+  display: none;
+  width: 100%;
+  max-width: 500px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.view-section.active {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   1. WELCOME SECTION STYLING
+   ========================================================================== */
+.welcome-content {
+  text-align: center;
+  padding: 40px 20px;
+  animation: fadeIn 1s ease-out forwards;
+}
+
+.logo-wrapper {
+  margin-bottom: 25px;
+  display: inline-block;
+}
+
+.glowing-logo {
+  width: 100px;
+  height: 100px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--glow-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: floatLogo 4s infinite ease-in-out;
+  backdrop-filter: blur(10px);
+}
+
+.logo-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 10px rgba(138, 43, 226, 0.5));
+}
+
+.welcome-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin-bottom: 15px;
+  color: var(--text-primary);
+}
+
+.gradient-text {
+  background: var(--text-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  position: relative;
+}
+
+.welcome-subtitle {
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 40px;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Glowing primary button */
+.btn-primary {
+  background: var(--primary-gradient);
+  border: none;
+  color: #fff;
+  padding: 16px 36px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 50px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition-smooth);
+  box-shadow: var(--glow-primary);
+}
+
+.btn-primary span {
+  z-index: 2;
+}
+
+.btn-primary svg {
+  z-index: 2;
+  transition: transform 0.3s ease;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #00d2ff 0%, #4a00e0 50%, #8a2be2 100%);
+  opacity: 0;
+  z-index: 1;
+  transition: opacity 0.5s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 40px rgba(0, 210, 255, 0.4);
+}
+
+.btn-primary:hover::before {
+  opacity: 1;
+}
+
+.btn-primary:hover svg {
+  transform: translateX(4px);
+}
+
+.btn-primary:active {
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   2. AUTHENTICATION (LOGIN & SIGNUP) CARD STYLING
+   ========================================================================== */
+.auth-card-container {
+  perspective: 1500px;
+  width: 100%;
+}
+
+.auth-card {
+  width: 100%;
+  min-height: 520px;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.auth-card.flipped {
+  transform: rotateY(180deg);
+}
+
+/* Card faces: Front and Back */
+.card-side {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  backface-visibility: hidden;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 28px;
+  padding: 40px;
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* The backend register card is slightly taller to accommodate the password strength meter */
+.card-back {
+  transform: rotateY(180deg);
+}
+
+.auth-header {
+  margin-bottom: 30px;
+}
+
+.auth-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  background: var(--text-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.auth-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+/* --- Input Fields with Floating Labels --- */
+.input-group {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  outline: none;
+  font-family: var(--font-main);
+  font-size: 1rem;
+  color: var(--text-primary);
+  transition: var(--transition-smooth);
+}
+
+.input-group label {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 1rem;
+  pointer-events: none;
+  transition: var(--transition-smooth);
+}
+
+/* Glow effect under active inputs */
+.input-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow: 0 0 0px var(--color-purple);
+  transition: var(--transition-smooth);
+  z-index: -1;
+  opacity: 0;
+}
+
+/* Input states (Focus & Filled) */
+.input-group input:focus,
+.input-group input:not(:placeholder-shown) {
+  border-color: var(--card-border-focus);
+  background: rgba(138, 43, 226, 0.03);
+}
+
+.input-group input:focus + label,
+.input-group input:not(:placeholder-shown) + label {
+  top: 0;
+  transform: translateY(-50%) scale(0.85);
+  background: #0f0b1c;
+  padding: 0 8px;
+  color: var(--color-cyan);
+  left: 15px;
+}
+
+.input-group input:focus ~ .input-glow {
+  box-shadow: 0 0 15px rgba(138, 43, 226, 0.15);
+  opacity: 1;
+}
+
+/* Field Hints */
+.field-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  padding-left: 4px;
+}
+
+/* Error message styling */
+.error-msg {
+  display: block;
+  color: var(--color-error);
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-top: 5px;
+  padding-left: 4px;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: var(--transition-fast);
+  height: 0;
+  overflow: hidden;
+}
+
+.error-msg.visible {
+  opacity: 1;
+  transform: translateY(0);
+  height: auto;
+  margin-bottom: 2px;
+}
+
+/* Shake animation on invalid input */
+.shake-error {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* --- Password Strength Meter --- */
+.password-strength-container {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.strength-bar-wrapper {
+  flex-grow: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.strength-bar {
+  height: 100%;
+  width: 0;
+  background: var(--color-error);
+  border-radius: 10px;
+  transition: width 0.4s ease, background-color 0.4s ease;
+}
+
+.strength-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 50px;
+  text-align: right;
+  transition: var(--transition-fast);
+}
+
+/* --- Submit Button styling --- */
+.btn-submit {
+  width: 100%;
+  padding: 16px;
+  background: var(--primary-gradient);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-family: var(--font-main);
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--glow-primary);
+  transition: var(--transition-smooth);
+}
+
+.btn-submit span {
+  position: relative;
+  z-index: 2;
+}
+
+.btn-submit::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #00d2ff 0%, #4a00e0 50%, #8a2be2 100%);
+  opacity: 0;
+  z-index: 1;
+  transition: opacity 0.5s ease;
+}
+
+.btn-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 35px rgba(138, 43, 226, 0.35);
+}
+
+.btn-submit:hover::after {
+  opacity: 1;
+}
+
+.btn-submit:active {
+  transform: translateY(0);
+}
+
+/* --- Toggle Links --- */
+.auth-toggle-text {
+  text-align: center;
+  margin-top: 25px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.toggle-link {
+  color: var(--color-cyan);
+  text-decoration: none;
+  font-weight: 600;
+  transition: var(--transition-fast);
+  border-bottom: 1px stroke transparent;
+}
+
+.toggle-link:hover {
+  color: var(--text-primary);
+  text-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+}
+
+/* ==========================================================================
+   3. TOAST NOTIFICATION STYLING
+   ========================================================================== */
+.toast-container {
+  position: fixed;
+  top: 30px;
+  right: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 9999;
+}
+
+.toast {
+  background: rgba(18, 14, 38, 0.85);
+  border: 1px solid var(--card-border);
+  color: var(--text-primary);
+  padding: 16px 24px;
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 300px;
+  max-width: 450px;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  transform: translateX(120%);
+  animation: toastIn 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  transition: var(--transition-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.toast.toast-out {
+  animation: toastOut 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+/* Colored accent bar on toast */
+.toast::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--color-cyan);
+}
+
+.toast-success::before {
+  background: var(--color-success);
+}
+
+.toast-error::before {
+  background: var(--color-error);
+}
+
+.toast-warning::before {
+  background: var(--color-warning);
+}
+
+.toast-message {
+  font-size: 0.92rem;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.toast-close {
+  margin-left: auto;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: var(--transition-fast);
+  display: flex;
+}
+
+.toast-close:hover {
+  color: var(--text-primary);
+}
+
+/* ==========================================================================
+   4. CSS KEYFRAME ANIMATIONS
+   ========================================================================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatLogo {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(2deg);
+    box-shadow: 0 0 40px rgba(138, 43, 226, 0.4);
+  }
+}
+
+@keyframes bgGlowMove1 {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(100px, 80px) scale(1.1);
+  }
+}
+
+@keyframes bgGlowMove2 {
+  0% {
+    transform: translate(0, 0) scale(1.0);
+  }
+  100% {
+    transform: translate(-120px, -50px) scale(1.15);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+@keyframes toastIn {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toastOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .card-side {
+    padding: 30px 20px;
+  }
+  
+  .welcome-title {
+    font-size: 2.8rem;
+  }
+  
+  .auth-title {
+    font-size: 1.8rem;
+  }
+  
+  .toast-container {
+    top: 20px;
+    right: 20px;
+    left: 20px;
+  }
+  
+  .toast {
+    min-width: 100%;
+  }
+}

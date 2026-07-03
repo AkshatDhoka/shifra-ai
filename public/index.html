@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shifra AI - Your Coding Companion</title>
+  <!-- Google Fonts: Outfit for body, Orbitron/Outfit for headers -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+  <!-- Interactive animated background glows -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-grid"></div>
+
+  <!-- Notification Container (Alerts) -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- MAIN WRAPPER -->
+  <main class="app-container">
+
+    <!-- 1. WELCOME SECTION -->
+    <section id="welcome-view" class="view-section active">
+      <div class="welcome-content">
+        <div class="logo-wrapper">
+          <div class="glowing-logo">
+            <svg viewBox="0 0 100 100" class="logo-svg">
+              <defs>
+                <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#8a2be2" />
+                  <stop offset="50%" stop-color="#4a00e0" />
+                  <stop offset="100%" stop-color="#00d2ff" />
+                </linearGradient>
+              </defs>
+              <!-- Hexagonal Outer Border -->
+              <polygon points="50,5 95,25 95,75 50,95 5,75 5,25" fill="none" stroke="url(#logo-grad)" stroke-width="4" />
+              <!-- Code tag style symbol inside -->
+              <path d="M32,35 L48,50 L32,65" fill="none" stroke="url(#logo-grad)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+              <line x1="55" y1="65" x2="70" y2="65" stroke="url(#logo-grad)" stroke-width="6" stroke-linecap="round" />
+            </svg>
+          </div>
+        </div>
+        <h1 class="welcome-title">SHIFRA <span class="gradient-text">AI</span></h1>
+        <p class="welcome-subtitle">A smart, voice-enabled assistant designed to write, fix, and explain your code in real-time.</p>
+        
+        <button id="btn-enter" class="btn-primary glow-btn">
+          <span>Initialize Assistant</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- 2. AUTHENTICATION SECTION (Hidden initially) -->
+    <section id="auth-view" class="view-section">
+      <div class="auth-card-container">
+        <!-- 3D Card Wrapper -->
+        <div id="auth-card" class="auth-card">
+          
+          <!-- FRONT SIDE: LOGIN -->
+          <div class="card-side card-front">
+            <div class="auth-header">
+              <h2 class="auth-title">Welcome Back</h2>
+              <p class="auth-subtitle">Login to access your workspace and history</p>
+            </div>
+            
+            <form id="login-form" novalidate autocomplete="off">
+              <div class="input-group">
+                <input type="text" id="login-username" required placeholder=" " autocomplete="username">
+                <label for="login-username">Username</label>
+                <div class="input-glow"></div>
+                <span class="error-msg"></span>
+              </div>
+              
+              <div class="input-group">
+                <input type="password" id="login-password" required placeholder=" " autocomplete="current-password">
+                <label for="login-password">Password</label>
+                <div class="input-glow"></div>
+                <span class="error-msg"></span>
+              </div>
+              
+              <button type="submit" class="btn-submit">
+                <span>Login</span>
+                <div class="btn-glow-effect"></div>
+              </button>
+            </form>
+            
+            <p class="auth-toggle-text">
+              New to Shifra AI? <a href="#" id="go-to-signup" class="toggle-link">Create an account</a>
+            </p>
+          </div>
+
+          <!-- BACK SIDE: SIGNUP -->
+          <div class="card-side card-back">
+            <div class="auth-header">
+              <h2 class="auth-title">Create Account</h2>
+              <p class="auth-subtitle">Join Shifra AI and start pair programming</p>
+            </div>
+            
+            <form id="register-form" novalidate autocomplete="off">
+              <div class="input-group">
+                <input type="text" id="reg-username" required placeholder=" " autocomplete="username">
+                <label for="reg-username">Username</label>
+                <div class="input-glow"></div>
+                <span class="error-msg" id="reg-username-error"></span>
+                <small class="field-hint">3-20 characters, letters, numbers, or underscores.</small>
+              </div>
+              
+              <div class="input-group">
+                <input type="password" id="reg-password" required placeholder=" " autocomplete="new-password">
+                <label for="reg-password">Password</label>
+                <div class="input-glow"></div>
+                <!-- Password Strength Meter -->
+                <div class="password-strength-container">
+                  <div class="strength-bar-wrapper">
+                    <div id="strength-bar" class="strength-bar"></div>
+                  </div>
+                  <span id="strength-text" class="strength-text">Empty</span>
+                </div>
+                <span class="error-msg" id="reg-password-error"></span>
+                <small class="field-hint">Must contain 8+ characters, including 1 uppercase, 1 lowercase, and 1 number.</small>
+              </div>
+
+              <div class="input-group">
+                <input type="password" id="reg-confirm-password" required placeholder=" ">
+                <label for="reg-confirm-password">Confirm Password</label>
+                <div class="input-glow"></div>
+                <span class="error-msg" id="reg-confirm-error"></span>
+              </div>
+              
+              <button type="submit" class="btn-submit">
+                <span>Sign Up</span>
+                <div class="btn-glow-effect"></div>
+              </button>
+            </form>
+            
+            <p class="auth-toggle-text">
+              Already have an account? <a href="#" id="go-to-login" class="toggle-link">Log in instead</a>
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+  
+  <script src="app.js"></script>
+</body>
+</html>
